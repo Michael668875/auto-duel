@@ -42,9 +42,6 @@ total_duel = 100
 
 for i in range(total_duel):
 
-    # click retry if connection breaks
-    find_and_click(folder + "retry.png", timeout=1, click_delay=0.5)
-
     # Try duel button for 1 sec
     find_and_click(folder + "duel.png", timeout=10, click_delay=0.5)
 
@@ -245,6 +242,9 @@ for i in range(total_duel):
             if pos[0] != -1:
                 click_image(folder+"end_phase.png", pos, "left", 0.1)
             print("End phase button clicked")
+            
+    # click retry if connection breaks
+    find_and_click(folder + "retry.png", timeout=1, click_delay=0.5)
         
     # Wait ok button
     search = True
