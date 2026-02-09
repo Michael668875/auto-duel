@@ -2,6 +2,11 @@ from imagesearch import *
 import pyautogui as pa
 import time
 
+folder = "./image/"
+character = "arrow"
+
+total_duel = 1000
+
 
 def find_and_click(image_path, timeout=1, click_delay=0.5):
     start = time.time()
@@ -32,18 +37,18 @@ def click_until_next(current_img, next_img, click_pos, timeout=3):
 
     return False
 
+def end_game(img, timeout=1):
+    start = time.time()
 
-folder = "./image/"
-character = "arrow"
-
-total_duel = 100
+    while time.time() - start < timeout:
+        if imagesearch(img)[0] > -1:
+            print("max level reached")
+            return True
+    return False
 
 
 
 for i in range(total_duel):
-
-    # click retry if connection breaks
-    find_and_click(folder + "retry.png", timeout=1, click_delay=0.5)
 
     # Try duel button for 1 sec
     find_and_click(folder + "duel.png", timeout=10, click_delay=0.5)
@@ -245,6 +250,9 @@ for i in range(total_duel):
             if pos[0] != -1:
                 click_image(folder+"end_phase.png", pos, "left", 0.1)
             print("End phase button clicked")
+
+    # click retry if connection breaks
+    find_and_click(folder + "retry.png", timeout=1, click_delay=0.5)
         
     # Wait ok button
     search = True
@@ -252,7 +260,7 @@ for i in range(total_duel):
         pos = imagesearch(folder+"ok.png")
         if pos[0] != -1:
             search = False
-        for i in range(3):
+        for _ in range(3):
             pa.click(x=1111, y=461) # should be right
         time.sleep(0.2)
     print("OK button found")
@@ -268,10 +276,14 @@ for i in range(total_duel):
         pos = imagesearch(folder+"next.png")
         if pos[0] != -1:
             search = False
-        for i in range(3):
+        for _ in range(3):
             pa.click(x=960, y=832)
         time.sleep(0.3)
     print("Next button found")
+
+    # check if max level reached
+    if end_game(folder+"max_level.png", 1):
+        break
 
     # Click next button
     if pos[0] != -1:
@@ -284,7 +296,7 @@ for i in range(total_duel):
         pos = imagesearch(folder+"next.png")
         if pos[0] != -1:
             search = False
-        for i in range(3):
+        for _ in range(3):
             pa.click(x=960, y=832)
         time.sleep(0.3)
     print("Next button found")
