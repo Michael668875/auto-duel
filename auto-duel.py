@@ -103,8 +103,7 @@ for i in range(total_duel):
             print("summon")
 
             start_time = time.time()
-            timeout = 5
-
+            timeout = 30
             while True:
                 pa.click(x=1056, y=850)
                 time.sleep(0.1)
@@ -255,7 +254,6 @@ for i in range(total_duel):
             search = False
         for i in range(3):
             pa.click(x=1111, y=461) # should be right
-            time.sleep(0.1)
         time.sleep(0.2)
     print("OK button found")
 
@@ -272,7 +270,6 @@ for i in range(total_duel):
             search = False
         for i in range(3):
             pa.click(x=960, y=832)
-            time.sleep(0.3)
         time.sleep(0.3)
     print("Next button found")
 
@@ -289,7 +286,6 @@ for i in range(total_duel):
             search = False
         for i in range(3):
             pa.click(x=960, y=832)
-            time.sleep(0.1)
         time.sleep(0.3)
     print("Next button found")
 
