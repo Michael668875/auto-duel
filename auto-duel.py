@@ -46,6 +46,17 @@ def end_game(img, timeout=1):
             return True
     return False
 
+def replay_click(message_img, yes_img, timeout=1):
+    start = time.time()
+
+    while time.time() - start < timeout:
+        if imagesearch(message_img)[0] > -1:
+            print("replay happens")
+            find_and_click(yes_img, 1, 0.3)
+            return True
+        time.sleep(0.1)
+    return False
+
 
 
 for i in range(total_duel):
@@ -75,7 +86,7 @@ for i in range(total_duel):
         print("Draw phase clicker running...")
 
         CLICK_INTERVAL = 0.2
-        MAX_RUNTIME = 15  # or however long this logic should be active
+        MAX_RUNTIME = 20  # or however long this logic should be active
 
         start = time.time()
         allow_click = False
@@ -184,10 +195,13 @@ for i in range(total_duel):
                         break
                     if time.time() - start_time > timeout:
                         print("didn't find confirmation button")
-                        break                   
+                        break        
 
             # Check if finished
             time.sleep(3)
+            # check for replay
+            if replay_click(folder+"replay.png", folder+"yes.png", 1):
+                time.sleep(3)
             pos = imagesearch(folder+"battle_phase_status.png")
             if pos[0] == -1:
                 break
@@ -225,10 +239,13 @@ for i in range(total_duel):
                         break
                     if time.time() - start_time > timeout:
                         print("didn't find confirmation button")
-                        break
+                        break 
                 
             # Check if finished
             time.sleep(3)
+            # check for replay
+            if replay_click(folder+"replay.png", folder+"yes.png", 1):
+                time.sleep(3)
             pos = imagesearch(folder+"battle_phase_status.png")
             if pos[0] == -1:
                 break
