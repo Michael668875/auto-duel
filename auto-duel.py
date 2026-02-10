@@ -7,6 +7,11 @@ character = "arrow"
 
 total_duel = 1000
 
+def poke_screen(duration=1):
+    start = time.time()
+    while time.time() - start < duration:
+        pa.click(960, 832)
+        time.sleep(0.3)
 
 def find_and_click(image_path, timeout=1, click_delay=0.5):
     start = time.time()
@@ -22,6 +27,44 @@ def find_and_click(image_path, timeout=1, click_delay=0.5):
 
     print(f"{image_path} not found within {timeout}s")
     return False
+
+def find_click_and_confirm(
+    find_img,
+    confirm_gone_img=None,
+    confirm_appear_img=None,
+    timeout=2,
+    click_delay=0.3,
+    min_clicks=1
+):
+    start = time.time()
+    clicks = 0
+
+    while clicks < min_clicks and time.time() - start < timeout:
+        pos = imagesearch(find_img)
+        if pos[0] != -1:
+            print(f"found {find_img}")
+            click_image(find_img, pos, "left", click_delay)
+            clicks += 1
+            print(f"clicked {find_img}")
+
+            time.sleep(0.2)
+
+    # check for confirmation
+    confirm_start = time.time()
+    while time.time() - confirm_start < timeout:
+
+        if confirm_appear_img and imagesearch(confirm_appear_img)[0] != -1:
+            print(f"confirm appear found {confirm_appear_img}")
+            return True
+    
+        if confirm_gone_img and imagesearch(confirm_gone_img)[0] == -1:
+            print(f"confirm gone found {confirm_gone_img}")
+            return True    
+
+        time.sleep(0.1)
+    print(f"timeout waiting for {find_img}")
+    return False
+
 
 def click_until_next(current_img, next_img, click_pos, timeout=3):
     start = time.time()
@@ -52,12 +95,14 @@ def replay_click(message_img, yes_img, timeout=1):
     while time.time() - start < timeout:
         if imagesearch(message_img)[0] > -1:
             print("replay happens")
-            find_and_click(yes_img, 1, 0.3)
-            return True
+            return find_click_and_confirm(yes_img, 
+                                   confirm_gone_img=message_img 
+                                   )
         time.sleep(0.1)
     return False
 
 
+turn1 = False
 
 for i in range(total_duel):
 
@@ -72,8 +117,10 @@ for i in range(total_duel):
 
     print("waiting...")
 
-    find_and_click(folder + "draw_phase.png", timeout=10, click_delay=0.5)
-
+    #find_and_click(folder + "draw_phase.png", timeout=10, click_delay=0.5)
+    if imagesearch_loop(folder+"turn_1.png", 0.1):
+        print("turn1 found")
+        turn1 = True
 
     # Summon monster
     monster_count = 0
@@ -81,7 +128,7 @@ for i in range(total_duel):
     # Loop starts here
     finished = False
 
-    while not finished:
+    while not finished and turn1:
 
         print("Draw phase clicker running...")
 
@@ -95,6 +142,7 @@ for i in range(total_duel):
 
             draw_visible = imagesearch(folder + "draw_phase.png")[0] != -1
             main_visible = imagesearch(folder + "main_phase.png")[0] != -1
+            you_visible = imagesearch(folder + "you.png")[0] != -1
 
             # If main phase is visible → stop clicking
             if main_visible:
@@ -105,15 +153,16 @@ for i in range(total_duel):
                 allow_click = True
 
             # Click ONLY if draw is visible AND we're allowed to click
-            if allow_click and draw_visible:
-                find_and_click(
-                    folder + "draw_phase.png",
-                    timeout=0.3,
-                    click_delay=0.2
-                )
+            if allow_click and draw_visible and you_visible:
+                if find_click_and_confirm(find_img=folder+"draw_phase.png",
+                                    confirm_gone_img=folder+"draw_phase.png",
+                                    confirm_appear_img=folder+"action.png",
+                                    timeout=1,
+                                    click_delay=0.1,
+                                    min_clicks=3):
+                                    break
 
-            time.sleep(CLICK_INTERVAL)
-
+            time.sleep(CLICK_INTERVAL)    
         
         if monster_count < 2:
             print("summon")
@@ -300,6 +349,7 @@ for i in range(total_duel):
 
     # check if max level reached
     if end_game(folder+"max_level.png", 1):
+        finished = True
         break
 
     # Click next button
