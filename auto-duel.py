@@ -29,8 +29,9 @@ def find_and_click(image_path, timeout=1, click_delay=0.5):
     print(f"{image_path} not found within {timeout}s")
     return False
 
-def find_click_and_confirm(
-    find_img,
+def click_and_confirm(
+    find_img=None,
+    coords=None,
     confirm_gone_img=None,
     confirm_appear_img=None,
     timeout=2,
@@ -41,12 +42,27 @@ def find_click_and_confirm(
     clicks = 0
 
     while clicks < min_clicks and time.time() - start < timeout:
-        pos = imagesearch(find_img)
-        if pos[0] != -1:
-            print(f"found {find_img}")
-            click_image(find_img, pos, "left", click_delay)
+        if coords:
+            pos = coords
+        elif find_img:
+            pos = imagesearch(find_img)
+        else:
+            raise ValueError("Either find_img or coords must be provided")
+        
+        if coords or ( pos and pos[0] != -1):
+            x, y = pos if coords else pos
+            if coords:
+                print(f"found coords: {coords}")
+            else:
+                print(f"found click target: {find_img}")
+            pa.click(x, y)
+            time.sleep(click_delay)
+
             clicks += 1
-            print(f"clicked {find_img}")
+            if coords:
+                print(f"clicked target: {coords}")
+            else:
+                print(f"clicked image: {find_img}")
 
             time.sleep(0.2)
 
@@ -63,7 +79,9 @@ def find_click_and_confirm(
             return True    
 
         time.sleep(0.1)
-    print(f"timeout waiting for {find_img}")
+    target = find_img if find_img else f"coords {coords}"
+    print(f"timeout waiting for {target}")
+
     return False
 
 
@@ -96,7 +114,7 @@ def replay_click(message_img, yes_img, timeout=1):
     while time.time() - start < timeout:
         if imagesearch(message_img)[0] > -1:
             print("replay happens")
-            return find_click_and_confirm(yes_img, 
+            return click_and_confirm(yes_img, 
                                    confirm_gone_img=message_img 
                                    )
         time.sleep(0.1)
@@ -155,7 +173,7 @@ for i in range(total_duel):
 
             # Click ONLY if draw is visible AND we're allowed to click
             if allow_click and draw_visible and you_visible:
-                if find_click_and_confirm(find_img=folder+"draw_phase.png",
+                if click_and_confirm(find_img=folder+"draw_phase.png",
                                     confirm_gone_img=folder+"draw_phase.png",
                                     confirm_appear_img=folder+"action.png",
                                     timeout=1,
@@ -164,55 +182,52 @@ for i in range(total_duel):
                                     break
 
             time.sleep(CLICK_INTERVAL)    
-        
+
+        # Main phase
+
         if monster_count < 2:
-            print("summon")
+            print("Attempting summon...")
 
-            start_time = time.time()
-            timeout = 30
-            while True:
-                pa.click(x=1056, y=850)
-                time.sleep(0.1)
+            if click_and_confirm(coords=(1056, 850), 
+                                 confirm_appear_img=folder+"normal_summon.png",
+                                 timeout=5):
+                print("Clicked summon menu coordinates")
 
-                pos = imagesearch(folder+"normal_summon.png")
+                if click_and_confirm(find_img=folder+"normal_summon.png",
+                                            confirm_gone_img=folder+"normal_summon.png",
+                                            timeout=5):
+                    print("normal summoned")
 
-                if pos[0] != -1:
-                    print("Normal summon button found:", pos)
-                    click_image(folder+"normal_summon.png", pos, "left", 0.1)
                     monster_count += 1
-                    print("done summoning")
-                    break
+                    print("Normal summon successful")
+                else:
+                    print("Failed to find normal summon button")  
 
-                if time.time() - start_time > timeout:
-                    print("Timeout waiting for normal summon button")
-                    break                
 
-        # Find action button
-        pos = imagesearch_loop(folder+"action.png", 0.1)
-        print("Action button found : ", pos[0], pos[1])
 
-        # Click action button
-        if pos[0] != -1:
-            click_image(folder+"action.png", pos, "left", 0.15)
-        print("Action button clicked")
+        # Find and click action button.                  
+
+        if click_and_confirm(find_img=folder+"action.png",
+                             confirm_appear_img=folder+"end_phase.png",
+                             timeout=5):
+            print("action button clicked")
+        else:
+            print("action button not found.")
+
+            
 
         # Find battle phase button
-        time.sleep(0.5)
-        pos = imagesearch(folder+"battle_phase.png")
-        if pos[0] != -1:
-            print("Battle phase button found : ", pos[0], pos[1])
-            # Click battle phase button
-            click_image(folder+"battle_phase.png", pos, "left", 0.1)
-            print("Battle phase button clicked")
+        
+        if imagesearch(folder+"battle_phase.png")[0] != -1:
+            click_and_confirm(
+                find_img=folder+"battle_phase.png",
+                confirm_gone_img=folder+"battle_phase.png")
+            print("battlephase")
         else:
-            # You can't attack if you get the first turn
-            pos = imagesearch_loop(folder+"end_phase.png", 0.1)
-            # Click end phase button
-            if pos[0] != -1:
-                click_image(folder+"end_phase.png", pos, "left", 0.1)
-            print("End phase button clicked")
-
-            # Skip battle phase
+            click_and_confirm(
+                find_img=folder+"end_phase.png",
+                confirm_gone_img=folder+"end_phase.png")
+            print("endphase")
             continue
 
         if monster_count >= 1:
