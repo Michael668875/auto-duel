@@ -1,1 +1,16 @@
-__pycache__
+# Python bytecode and metadata
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# Editor settings
+.vscode/
+
+# Environment variables
+.env
+.env.*
