@@ -173,12 +173,14 @@ for i in range(total_duel):
 
             # Click ONLY if draw is visible AND we're allowed to click
             if allow_click and draw_visible and you_visible:
-                if click_and_confirm(find_img=folder+"draw_phase.png",
-                                    confirm_appear_img=folder+"action.png",
-                                    timeout=3,
-                                    click_delay=0.2,
-                                    min_clicks=5):
-                                    break
+                click_and_confirm(find_img=folder+"draw_phase000.png",
+                                    confirm_gone_img=folder+"draw_phase000.png",
+                                    min_clicks=3)
+                                    
+                click_and_confirm(find_img=folder+"card_drawn.png",
+                                    confirm_gone_img=folder+"card_drawn.png",
+                                    min_clicks=3)
+                break
 
             time.sleep(CLICK_INTERVAL)    
 
