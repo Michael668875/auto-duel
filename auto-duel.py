@@ -2,6 +2,7 @@ from imagesearch import *
 import pyautogui as pa
 import time
 
+
 folder = "./image/"
 character = "arrow"
 
