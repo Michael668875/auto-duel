@@ -103,7 +103,7 @@ def end_game(img, timeout=1):
     start = time.time()
 
     while time.time() - start < timeout:
-        if imagesearch(img)[0] > -1:
+        if imagesearch(img, 0.9)[0] > -1:
             print("max level reached")
             return True
     return False
