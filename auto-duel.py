@@ -364,9 +364,12 @@ for i in range(total_duel):
         time.sleep(0.3)
     print("Next button found")
 
-    # check if max level reached
-    if end_game(folder+"max_level.png", 1):
-        finished = True
+    # check if max level reached     
+    for pic in ["max_level35.png", "max_level40.png"]:
+        if end_game(folder + pic, 1):
+            finished = True
+            break
+    if finished:
         break
 
     # Click next button
