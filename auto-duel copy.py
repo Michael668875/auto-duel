@@ -4,105 +4,116 @@ import time
 from enum import Enum
 
 
-folder = "./image/" # remove this when find_and_click function is phased out
-character = "arrow"
-IMAGE_FOLDER = "./image/" # for click_and_confirm function
+FOLDER = "./image/"
 MONSTER_ZONES = [
     (800, 720),
     (950, 720),
     (1100, 720)
 ]
 
-
-def find_and_click(image_path, timeout=1, click_delay=0.5): # phase this out and replace with click_and_confirm function
-    start = time.time()
-
-    while time.time() - start < timeout:
+def stable_imagesearch(image_path, checks=3, delay=0.1):
+    for _ in range(checks):
         pos = imagesearch(image_path)
-        if pos[0] != -1:
-            print(f"Found {image_path} at", pos)
-            click_image(image_path, pos, "left", click_delay)
-            return True
-        
-        time.sleep(0.1) # small pause to avoid CPU abuse
+        if not pos or pos[0] == -1:
+            return None
+        time.sleep(delay)
+    return pos
 
-    print(f"{image_path} not found within {timeout}s")
+
+def click_target(
+    deadline,
+    find_img=None,
+    coords=None,    
+    click_delay=0.3,
+    img_folder=FOLDER
+):
+    
+    if not find_img and not coords:
+        raise ValueError("Either find_img or coords must be provided")
+     
+    pos = None
+
+    # Click phase
+    while time.time() < deadline:
+        if coords:
+            pos = coords
+        else:
+            # confirm stable target
+            pos = stable_imagesearch(img_folder + find_img)
+        
+        if coords or ( pos and pos[0] != -1):
+            break
+
+    if not pos:
+        return False # target not found
+
+    # click once
+    x, y = pos
+    pa.click(x, y)
+
+    target = coords if coords else find_img
+    print(f"Clicking: {target}")
+    
+    time.sleep(click_delay)
+
+    return True
+
+def confirm_state(
+    deadline,
+    confirm_gone_img=None,
+    confirm_appear_img=None, 
+    folder=FOLDER
+):
+    # Confirmation phase
+    while time.time()  < deadline:
+
+        if confirm_appear_img:
+            # use stable image search for appear img
+            pos = stable_imagesearch(folder + confirm_appear_img)
+            if pos and pos[0] != -1:
+                print(f"Confirmed appearance: {confirm_appear_img}")
+                return True        
+    
+        if confirm_gone_img:
+            # use stable image search here as well
+            pos = stable_imagesearch(folder + confirm_gone_img)
+            if not pos or pos[0] == -1:
+                print(f"Confirmed disappearance: {confirm_gone_img}")
+                return True    
+
+        time.sleep(0.1)
+    print("Timeout waiting for confirmation")
+
     return False
 
 def click_and_confirm(
     find_img=None,
     coords=None,
     confirm_gone_img=None,
-    confirm_appear_img=None,
+    confirm_appear_img=None,    
     timeout=2,
     click_delay=0.3,
-    min_clicks=1,
-    folder=IMAGE_FOLDER
-):
+    img_folder=FOLDER):
+
+    deadline = time.time() + timeout
+
+    if click_target(
+        deadline=deadline,
+        find_img=find_img,
+        coords=coords,    
+        click_delay=click_delay,
+        img_folder=img_folder):
+
+        return confirm_state(
+            deadline=deadline,
+            confirm_gone_img=confirm_gone_img,
+            confirm_appear_img=confirm_appear_img, 
+            folder=img_folder)
     
-    if not find_img and not coords:
-        raise ValueError("Either find_img or coords must be provided")
-     
-    start = time.time()
-    clicks = 0
-
-    # Click phase
-    while clicks < min_clicks and time.time() - start < timeout:
-        if coords:
-            pos = coords
-        else:
-            pos = imagesearch(folder + find_img)
-        
-        if coords or ( pos and pos[0] != -1):
-            x, y = pos if coords else pos
-
-            target = coords if coords else find_img
-            print(f"Clicking: {target}")
-            
-            pa.click(x, y)
-            clicks += 1
-            time.sleep(click_delay)
-
-        else:
-            time.sleep(0.1)
-
-    # Confirmation phase
-    confirm_start = time.time()
-    while time.time() - confirm_start < timeout:
-
-        if confirm_appear_img:
-            pos = imagesearch(folder + confirm_appear_img)
-            if pos and pos[0] != -1:
-                print(f"Confirmed appearance: {confirm_appear_img}")
-                return True
-        
-    
-        if confirm_gone_img:
-            pos = imagesearch(folder + confirm_gone_img)
-            if not pos or pos[0] == -1:
-                print(f"Confirmed disappearance: {confirm_gone_img}")
-                return True    
-
-        time.sleep(0.1)
-    target = find_img if find_img else f"coords {coords}"
-    print(f"timeout waiting for {target}")
-
     return False
 
 
-"""def click_until_next(current_img, next_img, click_pos, timeout=3):
-    start = time.time()
 
-    while time.time() - start < timeout:
-        if imagesearch(next_img)[0] > -1:
-            return True
-        
-        if imagesearch(current_img)[0] > -1:
-            pa.click(*click_pos)
-
-        time.sleep(0.1)
-
-    return False"""
 
 def end_game(img, timeout=1): # merge this with handle_end_game function
     start = time.time()
@@ -125,12 +136,12 @@ def replay_click(message_img, yes_img, timeout=1): # merge this with handle_repl
         time.sleep(0.1)
     return False
 
-def count_monsters(folder="./image/"):
+def count_monsters(FOLDER="./image/"):
     count = 0
 
     for zone in MONSTER_ZONES:
         pos = imagesearcharea(
-            folder + "empty_monster_slot.png",
+            FOLDER + "empty_monster_slot.png",
             zone[0] - 50,
             zone[1] - 50,
             zone[0] + 50,
@@ -169,7 +180,7 @@ def img(name, confidence=0.8, timeout=1, interval=0.1):
     timeout    → how long to keep retrying (seconds)
     interval   → delay between retries
     """
-    path = folder + name
+    path = FOLDER + name
     start = time.time()
 
     while True:
@@ -182,6 +193,27 @@ def img(name, confidence=0.8, timeout=1, interval=0.1):
             return None  # gave up
 
         time.sleep(interval)
+
+# caching images
+def get_state_images(image_list, folder=FOLDER):
+    results = {}
+    for img in image_list:
+        pos = imagesearch(folder + img)
+        results[img] = pos if pos and pos[0] != -1 else None
+    return results
+# usage 
+"""
+
+state = get_state_images(
+    ["draw.png", "victory.png", "retry.png"],
+    folder
+)
+
+if state["draw.png"]:
+    click_and_confirm(find_img="draw.png")
+
+
+"""
 
 
 def detect_state():
@@ -233,7 +265,7 @@ def handle_gate(): # done
 def handle_turn_1(): # done
     # TURN 1 IS SIGNAL TO START DRAW PHASE
 
-    if imagesearch_loop(folder+"turn_1.png", 0.1):
+    if imagesearch_loop(FOLDER+"turn_1.png", 0.1):
         print("turn1 found")   
 
 
@@ -289,7 +321,7 @@ def end_main_phase():
 
     # Find battle phase button or end phase if turn 1
         
-    if imagesearch(folder+"battle_phase.png")[0] != -1:
+    if imagesearch(FOLDER+"battle_phase.png")[0] != -1:
         click_and_confirm(
             find_img="battle_phase.png",
             confirm_gone_img="battle_phase.png")
@@ -312,16 +344,16 @@ def handle_battle_phase():
         time.sleep(0.2)
         pa.click(x=1097, y=542) # should be correct
         # Find attack #1 button
-        pos = imagesearch_loop(folder+"attack.png", 0.1)
+        pos = imagesearch_loop(FOLDER+"attack.png", 0.1)
         print("Attack #1 button found : ", pos[0], pos[1])
 
         # Click attack #1 button
         if pos[0] != -1:
-            click_image(folder+"attack.png", pos, "left", 0.1)
+            click_image(FOLDER+"attack.png", pos, "left", 0.1)
         print("Attack #1 button clicked")
 
         # choose target when there is more than one opponent monster
-        target = imagesearch(folder+"target.png")
+        target = imagesearch(FOLDER+"target.png")
         if target[0] != -1:  
             start_time = time.time()
             timeout = 3              
@@ -329,9 +361,9 @@ def handle_battle_phase():
                 pa.click(x=836, y=625)
                 time.sleep(0.1)
 
-                conf = imagesearch(folder+"confirm.png")
+                conf = imagesearch(FOLDER+"confirm.png")
                 if conf[0] != -1:
-                    click_image(folder+"confirm.png", conf, "left", 0.1)
+                    click_image(FOLDER+"confirm.png", conf, "left", 0.1)
                     print("target confirmed")
                     break
                 if time.time() - start_time > timeout:
@@ -344,19 +376,19 @@ def handle_battle_phase():
         pa.click(x=1206, y=540) # should be correct
         # Find attack #2 button
         time.sleep(0.2)            
-        pos = imagesearch_loop_timeout(folder+"attack.png", 0.1, 0.5)
+        pos = imagesearch_loop_timeout(FOLDER+"attack.png", 0.1, 0.5)
         if pos[0] != -1:
             print("Attack #2 button found : ", pos[0], pos[1])
 
             # Click attack #2 button
             if pos[0] != -1:
-                click_image(folder+"attack.png", pos, "left", 0.1)
+                click_image(FOLDER+"attack.png", pos, "left", 0.1)
             print("Attack #2 button clicked")
         else:
             monster_count -= 1
 
         # choose target when there is more than one opponent monster
-        target = imagesearch(folder+"target.png")
+        target = imagesearch(FOLDER+"target.png")
         if target[0] != -1:  
             start_time = time.time()
             timeout = 3              
@@ -364,9 +396,9 @@ def handle_battle_phase():
                 pa.click(x=836, y=625)
                 time.sleep(0.1)
 
-                conf = imagesearch(folder+"confirm.png")
+                conf = imagesearch(FOLDER+"confirm.png")
                 if conf[0] != -1:
-                    click_image(folder+"confirm.png", conf, "left", 0.1)
+                    click_image(FOLDER+"confirm.png", conf, "left", 0.1)
                     print("target confirmed")
                     break
                 if time.time() - start_time > timeout:
@@ -377,21 +409,21 @@ def end_battle():
     #
     # END BATTLE PHASE
     #    
-    pos = imagesearch_loop(folder+"action.png", 0.1)
+    pos = imagesearch_loop(FOLDER+"action.png", 0.1)
     print("Action button found : ", pos[0], pos[1])
 
     # Click action button
     if pos[0] != -1:
-        click_image(folder+"action.png", pos, "left", 0.1)
+        click_image(FOLDER+"action.png", pos, "left", 0.1)
     print("Action button clicked")
 
     # Find end phase button
-    pos = imagesearch_loop(folder+"end_phase.png", 0.1)
+    pos = imagesearch_loop(FOLDER+"end_phase.png", 0.1)
     print("End phase button found : ", pos[0], pos[1])
 
     # Click end phase button
     if pos[0] != -1:
-        click_image(folder+"end_phase.png", pos, "left", 0.1)
+        click_image(FOLDER+"end_phase.png", pos, "left", 0.1)
     print("End phase button clicked")
 
 
@@ -411,7 +443,7 @@ def handle_level_screen():
     # Wait next button
     search = True
     while search:
-        pos = imagesearch(folder+"next.png")
+        pos = imagesearch(FOLDER+"next.png")
         if pos[0] != -1:
             search = False
         for _ in range(3):
@@ -420,13 +452,13 @@ def handle_level_screen():
     print("Next button found")
 
     # check if max level reached
-    if end_game(folder+"max_level.png", 1):
+    if end_game(FOLDER+"max_level.png", 1):
         finished = True
         #break
 
     # Click next button
     if pos[0] != -1:
-        click_image(folder+"next.png", pos, "left", 0.5)
+        click_image(FOLDER+"next.png", pos, "left", 0.5)
     print("Next button clicked")
 
 
@@ -436,7 +468,7 @@ def handle_rewards_screen():
     # Wait next button
     search = True
     while search:
-        pos = imagesearch(folder+"next.png")
+        pos = imagesearch(FOLDER+"next.png")
         if pos[0] != -1:
             search = False
         for _ in range(3):
@@ -446,7 +478,7 @@ def handle_rewards_screen():
 
     # Click next button
     if pos[0] != -1:
-        click_image(folder+"next.png", pos, "left", 0.5)
+        click_image(FOLDER+"next.png", pos, "left", 0.5)
     print("Next button clicked")
 
 def handle_post_duel():
@@ -454,16 +486,16 @@ def handle_post_duel():
     # POST GAME
     #
     # Try character
-    find_and_click(folder + "char_"+character+".png", timeout=10, click_delay=0.5)
+    click_and_confirm(find_img="char_arrow.png", timeout=10)
 
 def handle_replay():
     #
     # EDGE CASE IF REPLAY IS NEEDED IN BATTLE
     # 
     # check for replay
-    if replay_click(folder+"replay.png", folder+"yes.png", 1):
+    if replay_click(FOLDER+"replay.png", FOLDER+"yes.png", 1):
         time.sleep(3)
-    pos = imagesearch(folder+"battle_phase_status.png")
+    pos = imagesearch(FOLDER+"battle_phase_status.png")
     if pos[0] == -1:
         pass # fix this later 
 
@@ -472,7 +504,7 @@ def connection_drop():
     # EDGE CASE IF CONNECTION DROPS
     #
     # click retry if connection breaks
-    find_and_click(folder + "retry.png", timeout=1, click_delay=0.5)
+    click_and_confirm(find_img="retry.png")
 
 
 # Main loop
@@ -561,52 +593,13 @@ def at_gate():
     return any(imagesearch(folder+img)[0] > -1 for img in GATE_SIGNS)
 """
 
-"""def handle_draw_phase():
-    start = time.time()
 
-    while time.time() - start < 3:
-        if imagesearch(folder+"main_phase.png")[0] > -1:
-            return True  # success
-
-        if imagesearch(folder+"draw_phase.png")[0] > -1:
-            pa.click(960, 832)
-
-        time.sleep(0.08)
-
-    return False
-
-This:
-
-    Clicks only when draw phase is visible
-
-    Stops as soon as main phase appears
-
-    Survives lag, fades, and missed clicks
-"""
     
 
 ### THESE ARE SOME FUNCTIONS TO INCORPORATE LATER ###
 
-# caching images
-def get_state_images(image_list, folder):
-    results = {}
-    for img in image_list:
-        pos = imagesearch(folder + img)
-        results[img] = pos if pos and pos[0] != -1 else None
-    return results
-# usage 
-"""
-
-state = get_state_images(
-    ["draw.png", "victory.png", "retry.png"],
-    folder
-)
-
-if state["draw.png"]:
-    click_and_confirm(find_img="draw.png")
 
 
-"""
 
 # back off and retry logic
 def wait_for_image(img, timeout=3, folder="./images/"):
@@ -638,126 +631,6 @@ Improves stability
 
 """
 
-# Separate click and confirm to two functions
-def click_target(find_img=None, coords=None, min_clicks=1, timeout=2, folder="./images/"):
-    start = time.time()
-    clicks = 0
-
-    while clicks < min_clicks and time.time() - start < timeout:
-        pos = coords if coords else imagesearch(folder + find_img)
-
-        if pos and (coords or pos[0] != -1):
-            pa.click(*pos)
-            clicks += 1
-            time.sleep(0.3)
-        else:
-            time.sleep(0.1)
-
-    return clicks > 0
-
-def confirm_state(confirm_appear=None, confirm_gone=None, timeout=2, folder="./images/"):
-    start = time.time()
-
-    while time.time() - start < timeout:
-
-        if confirm_appear:
-            pos = imagesearch(folder + confirm_appear)
-            if pos and pos[0] != -1:
-                return True
-
-        if confirm_gone:
-            pos = imagesearch(folder + confirm_gone)
-            if not pos or pos[0] == -1:
-                return True
-
-        time.sleep(0.1)
-
-    return False
-
-# Then combine them like this:
-def click_and_confirm(args):
-    if click_target(...):
-        return confirm_state(...)
-    return False
-
-"""
-Why This Is Better:
-
-Each function does ONE job
-
-Easier to debug
-
-Easier to test
-
-Reusable
-
-This is clean design.
-
-"""
-
-# Optimized Version (Minimum Image Searches)
-"""
-Here's a version that:
-
-Searches once per loop
-
-Doesn't double-search in confirm
-
-Minimizes wasted scans
-"""
-def click_and_confirm_fast(
-    find_img=None,
-    coords=None,
-    confirm_img=None,
-    timeout=2,
-    min_clicks=1,
-    folder="./images/"
-):
-
-    if not find_img and not coords:
-        raise ValueError("Need find_img or coords")
-
-    start = time.time()
-    clicks = 0
-
-    while time.time() - start < timeout:
-
-        # Search once
-        pos = coords if coords else imagesearch(folder + find_img)
-
-        if pos and (coords or pos[0] != -1):
-
-            if clicks < min_clicks:
-                pa.click(*pos)
-                clicks += 1
-                time.sleep(0.3)
-
-            # After clicking enough, check confirm
-            if confirm_img:
-                confirm_pos = imagesearch(folder + confirm_img)
-                if confirm_pos and confirm_pos[0] != -1:
-                    return True
-            else:
-                return True
-
-        time.sleep(0.1)
-
-    return False
-"""
-Why This Is Faster:
-Instead of:
-
-Click phase searches
-Confirm phase searches
-
-
-It merges both into a single loop.
-
-Fewer image scans.
-
-Much faster.
-
-"""
 
 """
 What I Recommend For Your Duel Links Bot
