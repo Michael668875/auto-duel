@@ -11,6 +11,30 @@ MONSTER_ZONES = [
     (1100, 720)
 ]
 
+"""def poke_screen(duration=1):
+    start = time.time()
+    while time.time() - start < duration:
+        pa.click(960, 832)
+        time.sleep(0.3)"""
+
+
+    
+"""Use multiple confirmation images (huge improvement)
+
+Don’t trust a single PNG.
+
+For example, Gate screen:
+
+GATE_SIGNS = [
+    "gate.png",
+    "standard_duelist.png",
+    "gate_background.png"
+]
+
+def at_gate():
+    return any(imagesearch(folder+img)[0] > -1 for img in GATE_SIGNS)
+"""
+
 def stable_imagesearch(image_path, checks=3, delay=0.1):
     for _ in range(checks):
         pos = imagesearch(image_path)
@@ -112,8 +136,22 @@ def click_and_confirm(
     
     return False
 
+"""
+# back off and retry logic
+#Checks quickly at first. Slows down gradually. Reduces CPU usage
+def wait_for_image(img, timeout=3, folder=FOLDER):
+    start = time.time()
+    delay = 0.05
 
+    while time.time() - start < timeout:
+        pos = imagesearch(folder + img)
+        if pos and pos[0] != -1:
+            return pos
 
+        time.sleep(delay)
+        delay = min(delay * 1.5, 0.5)  # cap at 0.5s
+
+    return None"""
 
 def end_game(img, timeout=1): # merge this with handle_end_game function
     start = time.time()
@@ -201,39 +239,28 @@ def get_state_images(image_list, folder=FOLDER):
         pos = imagesearch(folder + img)
         results[img] = pos if pos and pos[0] != -1 else None
     return results
-# usage 
-"""
-
-state = get_state_images(
-    ["draw.png", "victory.png", "retry.png"],
-    folder
-)
-
-if state["draw.png"]:
-    click_and_confirm(find_img="draw.png")
 
 
-"""
-
-
-def detect_state():
-    for state, image in [
-        (State.AT_THE_GATE, ""),
+STATE_IMAGE_MAP =  [
+        (State.AT_THE_GATE, "at_gate.png"),
         (State.TURN_1, "turn_1.png"),
         (State.DRAW_PHASE, "draw_phase.png"),
         (State.MAIN_PHASE, "main_phase.png"),
-        (State.END_MAIN_PHASE, "main_phase.png"),
+        (State.END_MAIN_PHASE, "end_main_phase.png"),
         (State.BATTLE_PHASE, "battle_phase_status.png"),
-        (State.END_BATTLE_PHASE, ""),
-        (State.WIN_SCREEN, ""),
-        (State.LEVEL_SCREEN, ""),
-        (State.REWARDS_SCREEN, ""),
-        (State.POST_GAME, ""),
+        (State.END_BATTLE_PHASE, "end_battle.png"),
+        (State.WIN_SCREEN, "win_screen.png"),
+        (State.LEVEL_SCREEN, "level_screen.png"),
+        (State.REWARDS_SCREEN, "rewards_screen.png"),
+        (State.POST_GAME, "post_game.png"),
         (State.EDGE_CASE_1_REPLAY, "replay.png"),
         (State.EDGE_CASE_2_CONNECTION_DROP, "retry.png")
-    ]:
-        if img(image):
-            print("State:" , state.name)
+    ]
+
+def detect_state(cached_images):
+    for state, image in STATE_IMAGE_MAP.items():
+        if cached_images.get(image):
+            print("State:", state.name)
             return state
     return None
 
@@ -512,12 +539,12 @@ def connection_drop():
 state = None
 
 while True:
-    emergency_checks()
+    #emergency_checks()
 
-    new_state = detect_state()
-    if new_state != state:
-        print("State: ", new_state)
-        state = new_state
+    state_images = list(STATE_IMAGE_MAP.values())
+
+    screen_state = get_state_images(state_images)
+    current_state = detect_state(screen_state)
 
     if state == State.AT_THE_GATE:
         handle_gate()
@@ -559,115 +586,5 @@ while True:
         connection_drop()
 
     time.sleep(0.1)
-
-
-
-
-
-
-
-
-### EVERYTHING BELOW HERE IS A SUGGESTION FOR LATER ###
-
-"""def poke_screen(duration=1):
-    start = time.time()
-    while time.time() - start < duration:
-        pa.click(960, 832)
-        time.sleep(0.3)"""
-
-
-    
-"""Use multiple confirmation images (huge improvement)
-
-Don’t trust a single PNG.
-
-For example, Gate screen:
-
-GATE_SIGNS = [
-    "gate.png",
-    "standard_duelist.png",
-    "gate_background.png"
-]
-
-def at_gate():
-    return any(imagesearch(folder+img)[0] > -1 for img in GATE_SIGNS)
-"""
-
-
-    
-
-### THESE ARE SOME FUNCTIONS TO INCORPORATE LATER ###
-
-
-
-
-# back off and retry logic
-def wait_for_image(img, timeout=3, folder="./images/"):
-    start = time.time()
-    delay = 0.05
-
-    while time.time() - start < timeout:
-        pos = imagesearch(folder + img)
-        if pos and pos[0] != -1:
-            return pos
-
-        time.sleep(delay)
-        delay = min(delay * 1.5, 0.5)  # cap at 0.5s
-
-    return None
-
-"""
-Why This Is Better:
-
-Checks quickly at first
-
-Slows down gradually
-
-Reduces CPU usage
-
-Looks more human
-
-Improves stability
-
-"""
-
-
-"""
-What I Recommend For Your Duel Links Bot
-
-Best setup:
-
-Cached state scan per frame
-
-Separate click + confirm functions
-
-Backoff waiting
-
-Single responsibility functions
-
-Avoid repeated image searches
-
-
-That combination will:
-
-Improve reliability
-
-Reduce CPU usage
-
-Reduce desync bugs
-
-Make debugging easier
-"""  
-
-
-    
-
- 
-
-    
-
-    
-
-
 
 
