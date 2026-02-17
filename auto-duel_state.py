@@ -8,7 +8,7 @@ FOLDER = "./image/"
 BLANK = ["blank1.png", "blank2.png", "blank3.png"]
 
 GAME_STATE = {
-    "monster_count": 0
+    "monster_count": 0,
 }
 
 """def poke_screen(duration=1):
@@ -197,16 +197,15 @@ def count_monsters(blank_images, folder=FOLDER):
 
 class State(Enum):
     AT_THE_GATE = 1
-    TURN_1 = 2
-    DRAW_PHASE = 3
-    MAIN_PHASE = 4
-    BATTLE_PHASE = 5
-    WIN_SCREEN = 6
-    LEVEL_SCREEN = 7
-    REWARDS_SCREEN = 8
-    CHAR_SPEECH = 9
-    EDGE_CASE_1_REPLAY = 10
-    EDGE_CASE_2_CONNECTION_DROP = 11
+    DRAW_PHASE = 2
+    MAIN_PHASE = 3
+    BATTLE_PHASE = 4
+    WIN_SCREEN = 5
+    LEVEL_SCREEN = 6
+    REWARDS_SCREEN = 7
+    CHAR_SPEECH = 8
+    EDGE_CASE_1_REPLAY = 9
+    EDGE_CASE_2_CONNECTION_DROP = 10
 
 
 def img(name, confidence=0.8, timeout=1, interval=0.1):
@@ -241,8 +240,7 @@ def get_state_images(image_list, folder=FOLDER):
 
 
 STATE_IMAGE_MAP =  [
-        (State.AT_THE_GATE, "duel.png"),
-        #(State.TURN_1, "turn_1.png"),
+        (State.AT_THE_GATE, "at_gate.png"),
         (State.DRAW_PHASE, "draw_phase.png"),
         (State.MAIN_PHASE, "main_phase.png"),
         (State.BATTLE_PHASE, "battle_phase_status.png"),
@@ -277,6 +275,10 @@ def handle_gate(): # done
     #
     # AT THE GATE
     #
+
+    no_keys = stable_imagesearch(FOLDER+"no_keys.png")
+    if no_keys:
+        return True
     # Try duel button
     click_and_confirm(find_img="duel.png", timeout=10)
 
@@ -284,13 +286,7 @@ def handle_gate(): # done
 
     click_and_confirm(find_img="duel.png", timeout=10)
 
-
-def handle_turn_1(): # done
-    # TURN 1 IS SIGNAL TO START DRAW PHASE
-
-    if imagesearch_loop(FOLDER+"turn_1.png", 0.1):
-        print("turn1 found")
-        return True 
+    return False
 
 
 def handle_draw_phase(): # done
@@ -299,10 +295,12 @@ def handle_draw_phase(): # done
     #
     click_and_confirm(find_img="draw_phase000.png",
                         confirm_gone_img="draw_phase000.png",
-                        timeout=10)
+                        timeout=5)
                         
     click_and_confirm(find_img="card_drawn.png",
-                        confirm_gone_img="card_drawn.png")
+                        confirm_gone_img="card_drawn.png", timeout=5)
+    
+    time.sleep(0.5)
                
 
 def handle_main_phase():
@@ -325,8 +323,6 @@ def handle_main_phase():
                                         timeout=5):
                 print("normal summoned")
 
-                monster_count += 1
-                print("Normal summon successful")
             else:
                 print("Failed to find normal summon button")  
     return monster_count
@@ -343,48 +339,26 @@ def end_main_phase():
         print("action button not found.")
 
     # Find battle phase button or end phase if turn 1
+
+    is_turn1 = stable_imagesearch(FOLDER+"turn_1.png")      
         
-    if imagesearch(FOLDER+"battle_phase.png")[0] != -1:
-        click_and_confirm(
-            find_img="battle_phase.png",
-            confirm_gone_img="battle_phase.png")
-        print("battlephase")
-    else:
+    if is_turn1:
+        print("Turn 1 detected → skipping battle phase")
         click_and_confirm(
             find_img="end_phase.png",
             confirm_gone_img="end_phase.png")
         print("endphase")
 
+    else: 
+        click_and_confirm(
+            find_img="battle_phase.png",
+            confirm_gone_img="battle_phase.png")
+        print("battlephase")
 
 def full_main_phase():
     GAME_STATE["monster_count"] = handle_main_phase()
     end_main_phase()
 
-
-"""def attack_monster(index):
-    monster_positions = [
-        (1097, 542),
-        (1206, 540)
-    ]
-
-    if index >= len(monster_positions):
-        return False
-    
-    time.sleep(1)
-    x, y = monster_positions[index]
-    pa.click(x=x, y=y)
-    time.sleep(0.3)
-
-    pos = stable_imagesearch(FOLDER+"attack.png")
-    if not pos or pos[0] == -1:
-        print("Attack button not found — stopping attacks")
-        return False
-
-    if click_image(FOLDER+"attack.png", pos, "left", 0.1):
-        print("attack button clicked in attack function")
-    choose_target()
-
-    return True"""
 
 def attack_monster(index):
     """
@@ -453,7 +427,7 @@ def handle_battle_phase():
 
     for i in range(monster_count):
         success = attack_monster(i)
-        time.sleep(2) # will miss the timing of second monster without this
+        time.sleep(3) # will miss the timing of second monster without this
         if not success:
             print(f"Monster {i} : Attack failed or skipped")
         else:
@@ -583,12 +557,9 @@ while True:
 
 
     if state == State.AT_THE_GATE:
-        handle_gate()
-
-    elif state == State.TURN_1 and not turn1_seen:
-        print("Turn 1 detected")
-        turn1_seen = True
-    #    handle_turn_1()
+        if handle_gate():
+            print("Exiting: No keys left")
+            break
 
     elif state == State.DRAW_PHASE:
         handle_draw_phase()
