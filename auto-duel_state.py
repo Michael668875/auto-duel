@@ -404,11 +404,13 @@ def choose_target():
         timeout = 3
         while True:
             pa.click(x=836, y=625)
-            time.sleep(0.1)
+            time.sleep(1)
 
             conf = imagesearch(FOLDER+"confirm.png")
             if conf[0] != -1:
-                if click_and_confirm(find_img="confirm.png", confirm_gone_img="confirm.png"):
+                if click_and_confirm(find_img="confirm.png", 
+                                     confirm_gone_img="confirm.png", 
+                                     ):
                     print("target confirmed")
                     break
 
