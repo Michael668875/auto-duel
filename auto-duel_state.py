@@ -383,7 +383,7 @@ def attack_monster(index):
     while time.time() - start_time < 0.7:
         pos = stable_imagesearch(FOLDER + "attack.png")
         if pos and pos[0] != -1:
-            break
+            break        
         time.sleep(0.05)
 
     if not pos or pos[0] == -1:
@@ -406,7 +406,7 @@ def choose_target():
             pa.click(x=836, y=625)
             time.sleep(1)
 
-            conf = imagesearch(FOLDER+"confirm.png")
+            conf = stable_imagesearch(FOLDER+"confirm.png")
             if conf[0] != -1:
                 if click_and_confirm(find_img="confirm.png", 
                                      confirm_gone_img="confirm.png", 
@@ -426,6 +426,10 @@ def handle_battle_phase():
     #
     monster_count = count_monsters(BLANK)
     print(f"Monsters detected: {monster_count}")
+
+    if monster_count >= 3:
+        choose_target() # if confirm screen is covering monsters
+
 
     for i in range(monster_count):
         success = attack_monster(i)
