@@ -408,9 +408,9 @@ def choose_target():
 
             conf = imagesearch(FOLDER+"confirm.png")
             if conf[0] != -1:
-                click_image(FOLDER+"confirm.png", conf, "left", 0.1)
-                print("target confirmed")
-                break
+                if click_and_confirm(find_img="confirm.png", confirm_gone_img="confirm.png"):
+                    print("target confirmed")
+                    break
 
             if time.time() - start_time > timeout:
                 print("didn't find confirmation button")
